@@ -788,6 +788,22 @@ async function batchUpdate() {
   startBatchRefresh();
 }
 
+async function refreshAll() {
+  if (isBatchProcessing) {
+    showToast('当前有任务进行中', 'info');
+    return;
+  }
+  if (flatTokens.length === 0) {
+    showToast('没有可刷新的 Token', 'error');
+    return;
+  }
+  // Select all tokens then batch refresh
+  setSelectedForTokens(flatTokens, true);
+  renderTable();
+  updateSelectedCount();
+  startBatchRefresh();
+}
+
 function updateBatchProgress() {
   const container = byId('batch-progress');
   const text = byId('batch-progress-text');

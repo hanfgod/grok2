@@ -302,6 +302,31 @@
   margin-top: 2px;
 }
 
+.video-history-delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accents-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.video-history-item:hover .video-history-delete {
+  opacity: 1;
+}
+
+.video-history-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .video-hint {
   font-size: 11px;
   color: var(--accents-4);
@@ -309,6 +334,71 @@
 
 .hidden {
   display: none !important;
+}
+
+/* ========== 图片上传区域 ========== */
+.video-upload-area {
+  border: 1.5px dashed var(--border, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+
+.video-upload-area:hover,
+.video-upload-area.dragover {
+  border-color: #111;
+  background: var(--video-surface-muted);
+}
+
+.video-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--accents-4);
+}
+
+.video-upload-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: var(--video-surface-muted);
+}
+
+.video-upload-preview img {
+  max-height: 160px;
+  max-width: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.video-upload-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.video-upload-remove:hover {
+  background: rgba(0,0,0,0.85);
 }
 
 /* ========== 模式切换 ========== */
@@ -735,6 +825,82 @@
 /* ========== 瀑布流全宽布局 ========== */
 .video-grid.waterfall-active {
   grid-template-columns: 1fr;
+}
+
+/* ========== 瀑布流图片上传行 ========== */
+.wf-image-upload-row {
+  margin-bottom: 16px;
+}
+
+.wf-image-upload-area {
+  border: 1.5px dashed var(--border, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+
+.wf-image-upload-area:hover,
+.wf-image-upload-area.dragover {
+  border-color: #111;
+  background: var(--video-surface-muted);
+}
+
+.wf-image-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 11px;
+  color: var(--accents-4);
+}
+
+.wf-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--video-surface-muted);
+  position: relative;
+}
+
+.wf-image-preview img {
+  height: 36px;
+  width: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.wf-image-name {
+  font-size: 11px;
+  color: var(--accents-6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-image-remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.wf-image-remove:hover {
+  background: rgba(0,0,0,0.8);
 }
 
 .video-grid.waterfall-active .video-side {

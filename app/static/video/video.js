@@ -26,6 +26,14 @@
   const historyList = document.getElementById('historyList');
   const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
+  // === DOM: Image Upload ===
+  const imageUploadArea = document.getElementById('imageUploadArea');
+  const imageFileInput = document.getElementById('imageFileInput');
+  const imageUploadPlaceholder = document.getElementById('imageUploadPlaceholder');
+  const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+  const imagePreview = document.getElementById('imagePreview');
+  const imageRemoveBtn = document.getElementById('imageRemoveBtn');
+
   // === DOM: Mode Toggle ===
   const videoGrid = document.getElementById('videoGrid');
   const singleSettings = document.getElementById('singleSettings');
@@ -42,6 +50,15 @@
   const wfAutoScroll = document.getElementById('wfAutoScroll');
   const wfAutoDownload = document.getElementById('wfAutoDownload');
   const wfGrid = document.getElementById('wfGrid');
+
+  // === DOM: Waterfall Image Upload ===
+  const wfImageUploadArea = document.getElementById('wfImageUploadArea');
+  const wfImageFileInput = document.getElementById('wfImageFileInput');
+  const wfImagePlaceholder = document.getElementById('wfImagePlaceholder');
+  const wfImagePreviewContainer = document.getElementById('wfImagePreviewContainer');
+  const wfImagePreview = document.getElementById('wfImagePreview');
+  const wfImageName = document.getElementById('wfImageName');
+  const wfImageRemoveBtn = document.getElementById('wfImageRemoveBtn');
 
   // === DOM: Lightbox ===
   const wfLightbox = document.getElementById('wfLightbox');
@@ -79,11 +96,121 @@
   let wfSelected = new Set();
   let lightboxIndex = -1;
 
+  // Image upload state
+  let uploadedImageBase64 = null; // data:image/xxx;base64,... or null
+  let wfUploadedImageBase64 = null; // waterfall mode image
+
   // Waterfall concurrent engine state
   let waterfallRunning = false;
   let waterfallStopping = false;  // Graceful stop: wait for in-progress videos to finish
   let waterfallAbortControllers = [];
   let waterfallActiveCount = 0;   // Number of currently generating videos
+
+  // === Image Upload Handlers ===
+  function handleImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      toast('请选择图片文件', 'error');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast('图片不能超过 20MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedImageBase64 = e.target.result;
+      if (imagePreview) imagePreview.src = uploadedImageBase64;
+      if (imageUploadPlaceholder) imageUploadPlaceholder.classList.add('hidden');
+      if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeUploadedImage() {
+    uploadedImageBase64 = null;
+    if (imageFileInput) imageFileInput.value = '';
+    if (imagePreview) imagePreview.src = '';
+    if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
+    if (imageUploadPlaceholder) imageUploadPlaceholder.classList.remove('hidden');
+  }
+
+  // === Waterfall Image Upload Handlers ===
+  function handleWfImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      toast('请选择图片文件', 'error');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast('图片不能超过 20MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      wfUploadedImageBase64 = e.target.result;
+      if (wfImagePreview) wfImagePreview.src = wfUploadedImageBase64;
+      if (wfImageName) wfImageName.textContent = file.name;
+      if (wfImagePlaceholder) wfImagePlaceholder.classList.add('hidden');
+      if (wfImagePreviewContainer) wfImagePreviewContainer.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeWfImage() {
+    wfUploadedImageBase64 = null;
+    if (wfImageFileInput) wfImageFileInput.value = '';
+    if (wfImagePreview) wfImagePreview.src = '';
+    if (wfImageName) wfImageName.textContent = '';
+    if (wfImagePreviewContainer) wfImagePreviewContainer.classList.add('hidden');
+    if (wfImagePlaceholder) wfImagePlaceholder.classList.remove('hidden');
+  }
+
+  if (wfImageUploadArea) {
+    wfImageUploadArea.addEventListener('click', (e) => {
+      if (e.target.closest('#wfImageRemoveBtn')) return;
+      if (wfImageFileInput) wfImageFileInput.click();
+    });
+    wfImageUploadArea.addEventListener('dragover', (e) => { e.preventDefault(); wfImageUploadArea.classList.add('dragover'); });
+    wfImageUploadArea.addEventListener('dragleave', () => { wfImageUploadArea.classList.remove('dragover'); });
+    wfImageUploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      wfImageUploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleWfImageFile(file);
+    });
+  }
+  if (wfImageFileInput) {
+    wfImageFileInput.addEventListener('change', () => {
+      const file = wfImageFileInput.files[0];
+      if (file) handleWfImageFile(file);
+    });
+  }
+  if (wfImageRemoveBtn) {
+    wfImageRemoveBtn.addEventListener('click', (e) => { e.stopPropagation(); removeWfImage(); });
+  }
+
+  if (imageUploadArea) {
+    imageUploadArea.addEventListener('click', (e) => {
+      if (e.target.closest('#imageRemoveBtn')) return;
+      if (imageFileInput) imageFileInput.click();
+    });
+    imageUploadArea.addEventListener('dragover', (e) => { e.preventDefault(); imageUploadArea.classList.add('dragover'); });
+    imageUploadArea.addEventListener('dragleave', () => { imageUploadArea.classList.remove('dragover'); });
+    imageUploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imageUploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleImageFile(file);
+    });
+  }
+  if (imageFileInput) {
+    imageFileInput.addEventListener('change', () => {
+      const file = imageFileInput.files[0];
+      if (file) handleImageFile(file);
+    });
+  }
+  if (imageRemoveBtn) {
+    imageRemoveBtn.addEventListener('click', (e) => { e.stopPropagation(); removeUploadedImage(); });
+  }
 
   function toast(message, type) {
     if (typeof showToast === 'function') {
@@ -272,6 +399,15 @@
     toast('历史记录已清空', 'success');
   }
 
+  function deleteHistoryItem(index) {
+    const history = loadHistory();
+    if (index >= 0 && index < history.length) {
+      history.splice(index, 1);
+      saveHistory(history);
+      renderHistory();
+    }
+  }
+
   function renderHistory() {
     const history = loadHistory();
     if (!historyList) return;
@@ -315,6 +451,16 @@
       el.appendChild(icon);
       el.appendChild(info);
 
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'video-history-delete';
+      deleteBtn.title = '删除';
+      deleteBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteHistoryItem(index);
+      });
+      el.appendChild(deleteBtn);
+
       el.addEventListener('click', () => {
         const isHtml = item.type === 'html';
         showVideo(item.content, isHtml);
@@ -329,6 +475,18 @@
   }
 
   // --- API ---
+  function buildVideoContent(prompt) {
+    if (uploadedImageBase64) {
+      // Multimodal: image + text
+      const parts = [
+        { type: 'image_url', image_url: { url: uploadedImageBase64 } },
+        { type: 'text', text: prompt }
+      ];
+      return parts;
+    }
+    return prompt;
+  }
+
   async function generateVideo() {
     const prompt = promptInput ? promptInput.value.trim() : '';
     if (!prompt) {
@@ -366,7 +524,7 @@
 
     const body = {
       model: 'grok-imagine-1.0-video',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: buildVideoContent(prompt) }],
       stream: stream,
       video_config: videoConfig
     };
@@ -924,9 +1082,12 @@
       wfRender();
 
       const startTime = Date.now();
+      const wfContent = wfUploadedImageBase64
+        ? [{ type: 'image_url', image_url: { url: wfUploadedImageBase64 } }, { type: 'text', text: prompt }]
+        : prompt;
       const body = {
         model: 'grok-imagine-1.0-video',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: wfContent }],
         stream: true,
         video_config: params
       };

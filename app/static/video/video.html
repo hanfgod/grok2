@@ -62,6 +62,24 @@
                 <textarea id="promptInput" class="geist-input video-textarea"
                   placeholder="描述你想要的视频画面，例如：一只猫在草地上奔跑，阳光明媚"></textarea>
               </div>
+              <div>
+                <label class="field-label">参考图片 <span style="font-weight:400;color:var(--accents-4);">（可选，上传后将基于图片生成视频）</span></label>
+                <div id="imageUploadArea" class="video-upload-area">
+                  <input type="file" id="imageFileInput" accept="image/*" style="display:none;">
+                  <div id="imageUploadPlaceholder" class="video-upload-placeholder">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accents-3);">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>点击或拖拽上传图片</span>
+                  </div>
+                  <div id="imagePreviewContainer" class="video-upload-preview hidden">
+                    <img id="imagePreview" alt="preview">
+                    <button id="imageRemoveBtn" class="video-upload-remove" title="移除图片">&times;</button>
+                  </div>
+                </div>
+              </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="field-label" for="ratioSelect">宽高比</label>
@@ -199,6 +217,24 @@
                   <span class="toggle-track"></span>
                   <span class="toggle-label" style="font-size:11px;">自动下载</span>
                 </label>
+              </div>
+            </div>
+            <div class="wf-image-upload-row">
+              <div id="wfImageUploadArea" class="wf-image-upload-area">
+                <input type="file" id="wfImageFileInput" accept="image/*" style="display:none;">
+                <div id="wfImagePlaceholder" class="wf-image-placeholder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accents-3);flex-shrink:0;">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  <span>参考图片（可选，点击或拖拽上传）</span>
+                </div>
+                <div id="wfImagePreviewContainer" class="wf-image-preview hidden">
+                  <img id="wfImagePreview" alt="preview">
+                  <span id="wfImageName" class="wf-image-name"></span>
+                  <button id="wfImageRemoveBtn" class="wf-image-remove" title="移除图片">&times;</button>
+                </div>
               </div>
             </div>
             <div id="wfGrid" class="video-waterfall">

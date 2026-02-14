@@ -59,3 +59,10 @@ htmlcov/
 
 # Project specific
 config.local.toml
+
+# AI/Dev tools
+.claude/
+.playwright-mcp/
+.spec-workflow/
+CLAUDE.md
+nul

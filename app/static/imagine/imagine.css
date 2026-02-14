@@ -583,6 +583,112 @@
   }
 }
 
+/* ========== Imagine 模式切换 ========== */
+.imagine-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  width: fit-content;
+  margin-bottom: 4px;
+}
+
+.imagine-mode-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--accents-5);
+  font-size: 11px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: 'Geist Sans', sans-serif;
+}
+
+.imagine-mode-btn:hover {
+  background: #f5f5f5;
+  color: var(--accents-7);
+}
+
+.imagine-mode-btn.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+/* ========== 编辑模式图片上传 ========== */
+.edit-image-upload {
+  margin-top: 12px;
+}
+
+.edit-upload-area {
+  border: 1.5px dashed var(--border, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+
+.edit-upload-area:hover,
+.edit-upload-area.dragover {
+  border-color: #111;
+  background: #f7f7f8;
+}
+
+.edit-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--accents-4);
+}
+
+.edit-preview-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: #f7f7f8;
+}
+
+.edit-preview-container img {
+  max-height: 140px;
+  max-width: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.edit-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.edit-remove-btn:hover {
+  background: rgba(0,0,0,0.85);
+}
+
 /* 图片放大预览 */
 .image-lightbox {
   display: none;

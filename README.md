@@ -26,6 +26,7 @@
 - 支持拖拽或点击上传参考图片（最大 50MB）
 - 图片预览与移除
 - 调用 `/v1/images/edits` 接口，模型 `grok-imagine-1.0-edit`
+<img width="518" height="790" alt="image" src="https://github.com/user-attachments/assets/7e1b975c-4c73-454b-91e4-4c5ce2e940fb" />
 
 ---
 
@@ -60,6 +61,8 @@
   - 批量选择、下载、删除
   - Lightbox 大图预览（支持键盘左右切换）
   - 优雅停止：点击停止后等待进行中的视频完成，不会中断生成
+<img width="819" height="859" alt="image" src="https://github.com/user-attachments/assets/4b88bf6b-9cd2-44e4-bed9-be77c173dd41" />
+<img width="890" height="845" alt="image" src="https://github.com/user-attachments/assets/e30d79be-dc7e-466d-b7a8-6c13f667f19b" />
 
 ---
 
@@ -119,24 +122,6 @@ docker compose up -d --build
 - **Imagine 图片生成/编辑**：WebSocket/SSE 实时图片生成 + 图片编辑模式（二开增强）
 - **Video 视频生成**：可视化视频生成，支持图生视频（二开新增）
 - **Voice Live 陪聊**：LiveKit 语音会话
-
-<br>
-
-## 同步上游更新
-
-本项目会定期同步上游 [chenyme/grok2api](https://github.com/chenyme/grok2api) 的更新：
-
-```bash
-# 添加上游远程（仅需一次）
-git remote add upstream https://github.com/chenyme/grok2api.git
-
-# 拉取并合并上游更新
-git fetch upstream
-git merge upstream/main
-
-# 解决冲突后推送
-git push origin main
-```
 
 <br>
 

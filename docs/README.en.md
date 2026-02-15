@@ -3,7 +3,7 @@
 [中文](../README.md) | **English**
 
 > [!NOTE]
-> This project is a fork of [chenyme/grok2api](https://github.com/chenyme/grok2api), with an added **Video Generation** page in the admin dashboard.
+> This project is a fork of [chenyme/grok2api](https://github.com/chenyme/grok2api), with multiple enhanced features added to the admin dashboard.
 >
 > This project is for learning and research only. You must comply with Grok's Terms of Use and applicable laws. Do not use it for illegal purposes.
 
@@ -13,13 +13,40 @@ Grok2API rebuilt with **FastAPI**, fully aligned with the latest web call format
 
 ## New Features (Fork)
 
+### Imagine Image Generation / Editing
+
+A new **Image Editing** mode has been added to the **Imagine** page (`/admin/imagine`) under the "Features" menu in the admin dashboard.
+
+| Mode | Description |
+| :--- | :--- |
+| **Generate Mode** | Generate images from scratch using prompts (original feature) |
+| **Edit Mode** | Upload a reference image + prompt for AI-based image editing |
+
+**Edit Mode Features**:
+
+- One-click toggle between Generate / Edit mode
+- Drag-and-drop or click to upload a reference image (max 50MB)
+- Image preview and removal
+- Calls `/v1/images/edits` endpoint, model `grok-imagine-1.0-edit`
+<img width="518" height="790" alt="image" src="https://github.com/user-attachments/assets/7e1b975c-4c73-454b-91e4-4c5ce2e940fb" />
+
+---
+
 ### Video Generation Page
 
-A new **Video Generation** page (`/admin/video`) has been added under the "Features" menu in the admin dashboard, providing a visual interface for video generation.
+The **Video Generation** page (`/admin/video`) under the "Features" menu provides a visual interface for video generation.
+
+**Dual Mode Support**:
+
+| Mode | Description |
+| :--- | :--- |
+| **Single Video Mode** | Generate one video at a time, ideal for fine-tuning parameters and preview |
+| **Waterfall Mode** | Batch continuous generation with concurrency control (1-3 concurrent), auto-scroll, auto-download |
 
 **Features**:
 
 - Prompt input with `Ctrl+Enter` shortcut
+- **Image-to-Video**: Upload a reference image to generate video based on image content (both Single and Waterfall modes supported)
 - Adjustable parameters:
   - Aspect ratio: `16:9` / `9:16` / `1:1` / `2:3` / `3:2`
   - Video length: `6s` / `10s` / `15s`
@@ -28,7 +55,22 @@ A new **Video Generation** page (`/admin/video`) has been added under the "Featu
 - Stream / non-stream output toggle
 - Real-time generation status with parameter sync
 - Video player preview (supports both URL and HTML response formats)
-- Generation history (local storage, click to replay)
+- Generation history (local storage, click to replay, per-item deletion)
+- **Waterfall Mode Exclusive**:
+  - Concurrency control (1/2/3 concurrent generations)
+  - Auto-scroll to latest video
+  - Auto-download completed videos
+  - Batch select, download, and delete
+  - Lightbox preview (keyboard left/right navigation)
+  - Graceful stop: waits for in-progress videos to finish instead of interrupting
+<img width="819" height="859" alt="image" src="https://github.com/user-attachments/assets/4b88bf6b-9cd2-44e4-bed9-be77c173dd41" />
+<img width="890" height="845" alt="image" src="https://github.com/user-attachments/assets/e30d79be-dc7e-466d-b7a8-6c13f667f19b" />
+
+---
+
+### Token Management Enhancement
+
+- New **"Refresh All"** button: one-click refresh of all Token statuses without manual selection
 
 <br>
 
@@ -79,27 +121,9 @@ Default password: `grok2api` (config key `app.app_key`, change it in production)
 - **Batch Operations**: Batch refresh, export, delete, enable NSFW
 - **Config Management**: Modify system configuration online
 - **Cache Management**: View and clean media cache
-- **Imagine Waterfall**: WebSocket/SSE real-time image generation
-- **Video Generation**: Visual video generation (new in fork)
+- **Imagine Generation/Editing**: WebSocket/SSE real-time image generation + image editing mode (fork enhancement)
+- **Video Generation**: Visual video generation with image-to-video support (new in fork)
 - **Voice Live**: LiveKit voice session
-
-<br>
-
-## Syncing Upstream Updates
-
-This project periodically syncs with upstream [chenyme/grok2api](https://github.com/chenyme/grok2api):
-
-```bash
-# Add upstream remote (only once)
-git remote add upstream https://github.com/chenyme/grok2api.git
-
-# Fetch and merge upstream updates
-git fetch upstream
-git merge upstream/main
-
-# Push after resolving conflicts
-git push origin main
-```
 
 <br>
 

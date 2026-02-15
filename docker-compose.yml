@@ -1,7 +1,7 @@
 services:
   grok2api:
     container_name: grok2api
-    build: .
+    image: ghcr.io/wangxingfan/grok2api:latest
     ports:
       - "8000:8000"
     environment:

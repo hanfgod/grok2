@@ -81,14 +81,34 @@ git clone https://github.com/WangXingFan/grok2api.git
 
 cd grok2api
 
-docker compose up -d --build
+docker compose up -d
 ```
 
-> 首次启动会自动构建镜像，后续更新执行：
+> 后续更新镜像：
 > ```bash
-> git pull
+> docker compose pull && docker compose up -d
+> ```
+>
+> 如需从源码构建：
+> ```bash
 > docker compose up -d --build
 > ```
+
+### Vercel 部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/WangXingFan/grok2api)
+
+> 请务必设置 `DATA_DIR=/tmp/data`，并关闭文件日志 `LOG_FILE_ENABLED=false`。
+>
+> 持久化请使用 MySQL / Redis / PostgreSQL，在 Vercel 环境变量中设置：`SERVER_STORAGE_TYPE`（mysql/redis/pgsql）与 `SERVER_STORAGE_URL`。
+
+### Render 部署
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/WangXingFan/grok2api)
+
+> Render 免费实例 15 分钟无访问会休眠，恢复/重启/重新部署会丢失。
+>
+> 持久化请使用 MySQL / Redis / PostgreSQL，在 Render 环境变量中设置：`SERVER_STORAGE_TYPE`（mysql/redis/pgsql）与 `SERVER_STORAGE_URL`。
 
 ### 环境变量
 

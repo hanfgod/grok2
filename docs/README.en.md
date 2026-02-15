@@ -83,14 +83,34 @@ git clone https://github.com/WangXingFan/grok2api.git
 
 cd grok2api
 
-docker compose up -d --build
+docker compose up -d
 ```
 
-> First run will build the image automatically. To update later:
+> To update the image:
 > ```bash
-> git pull
+> docker compose pull && docker compose up -d
+> ```
+>
+> To build from source instead:
+> ```bash
 > docker compose up -d --build
 > ```
+
+### Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/WangXingFan/grok2api)
+
+> You must set `DATA_DIR=/tmp/data` and disable file logging `LOG_FILE_ENABLED=false`.
+>
+> For persistence, use MySQL / Redis / PostgreSQL by setting `SERVER_STORAGE_TYPE` (mysql/redis/pgsql) and `SERVER_STORAGE_URL` in Vercel environment variables.
+
+### Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/WangXingFan/grok2api)
+
+> Render free instances sleep after 15 minutes of inactivity. Data will be lost on restart/redeploy.
+>
+> For persistence, use MySQL / Redis / PostgreSQL by setting `SERVER_STORAGE_TYPE` (mysql/redis/pgsql) and `SERVER_STORAGE_URL` in Render environment variables.
 
 ### Environment Variables
 

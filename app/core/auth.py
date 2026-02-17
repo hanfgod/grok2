@@ -2,7 +2,6 @@
 API auth helpers.
 """
 
-import os
 from typing import Optional
 
 from fastapi import HTTPException, Security, status
@@ -12,19 +11,12 @@ from app.core.config import get_config, is_public_mode
 
 DEFAULT_API_KEY = ""
 DEFAULT_APP_KEY = ""
-LEGACY_DEFAULT_APP_KEY = "grok2api"
-INSECURE_DEFAULT_OVERRIDE = {"1", "true", "yes", "on"}
 
 security = HTTPBearer(
     auto_error=False,
     scheme_name="API Key",
     description="Enter your API Key in the format: Bearer <key>",
 )
-
-
-def _allow_insecure_default_app_key() -> bool:
-    value = os.getenv("ALLOW_INSECURE_DEFAULT_APP_KEY", "")
-    return value.strip().lower() in INSECURE_DEFAULT_OVERRIDE
 
 
 def get_admin_api_key() -> str:

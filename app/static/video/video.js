@@ -422,49 +422,24 @@
 
     if (!item || !item.content) return;
     const content = String(item.content).trim();
-    const fileMatch = content.match(/(?:https?:\/\/[^\s"'<>]+)?\/v1\/files\/video\/(.+?)(?=[?#][^\s"'<>]*|[\s"'<>]|$)/i);
-    if (!fileMatch) {
+    const videoMatch = content.match(/(?:https?:\/\/[^\s"'<>]+)?\/v1\/files\/video\/(.+?)(?=[?#][^\s"'<>]*|[\s"'<>]|$)/i);
+    if (!videoMatch) {
       warn('删除缓存失败：未识别到视频文件路径');
       return;
     }
-    const filename = fileMatch[1];
 
-    // Fire-and-forget: delete the cached file
+    // Fire-and-forget: backend auto-cleans associated thumbnail
     ensureApiKey().then(apiKey => {
       if (apiKey === null) {
         warn('删除缓存失败：登录已失效，请重新登录');
         return;
       }
-      if (!apiKey) {
-        // Public page mode: skip protected admin delete API
-        return;
-      }
+      if (!apiKey) return;
       fetch('/api/v1/admin/cache/item/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(apiKey) },
-        body: JSON.stringify({ type: 'video', name: filename })
-      }).then(async (res) => {
-        if (!res.ok) {
-          let detail = '';
-          try {
-            const errData = await res.json();
-            detail = errData && errData.detail ? String(errData.detail) : '';
-          } catch (_) {}
-          warn(`删除缓存失败：${detail || `HTTP ${res.status}`}`);
-          return;
-        }
-
-        try {
-          const data = await res.json();
-          if (!data || !data.result || data.result.deleted !== true) {
-            warn('删除缓存失败：缓存文件不存在或已被清理');
-          }
-        } catch (_) {
-          warn('删除缓存失败：响应解析异常');
-        }
-      }).catch(() => {
-        warn('删除缓存失败：请求异常');
-      });
+        body: JSON.stringify({ type: 'video', name: videoMatch[1] })
+      }).catch(() => {});
     }).catch(() => {
       warn('删除缓存失败：鉴权检查异常');
     });

@@ -678,17 +678,38 @@ class DownloadService(BaseService):
         return {"total": total, "page": page, "page_size": page_size, "items": paged}
 
     def delete_file(self, media_type: str, name: str) -> Dict[str, Any]:
-        """删除缓存文件"""
+        """删除缓存文件，视频删除时自动清理关联预览图"""
         cache_dir = self.image_dir if media_type == "image" else self.video_dir
         file_path = cache_dir / name.replace("/", "-")
+        deleted = False
 
         if file_path.exists():
             try:
                 file_path.unlink()
-                return {"deleted": True}
+                deleted = True
             except Exception:
                 pass
-        return {"deleted": False}
+
+        # Video: also delete associated thumbnail in image cache
+        # Video: users-xxx-generated-yyy-generated_video.mp4
+        # Thumb: users-xxx-generated-yyy-preview_image.jpg
+        # Common prefix: everything before the last "-generated_video" / "-preview_image"
+        if media_type == "video" and name:
+            stem = file_path.stem  # e.g. "users-xxx-generated_video"
+            # Strip trailing suffixes to get common prefix
+            for suffix in ("-generated_video", "-generated-video"):
+                if stem.endswith(suffix):
+                    stem = stem[: -len(suffix)]
+                    break
+            if stem:
+                for img_file in self.image_dir.glob(f"{stem}*"):
+                    if img_file.is_file():
+                        try:
+                            img_file.unlink()
+                        except Exception:
+                            pass
+
+        return {"deleted": deleted}
 
     def clear(self, media_type: str = "image") -> Dict[str, Any]:
         """清空缓存"""

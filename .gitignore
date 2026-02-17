@@ -45,6 +45,7 @@ logs/
 *.log
 
 # Data
+data/config.toml
 data/*.json
 data/tmp/*
 data/.locks/*

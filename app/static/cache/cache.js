@@ -35,6 +35,7 @@ const UI_MAP = {
   selectedCount: 'selected-count',
   batchActions: 'batch-actions',
   loadBtn: 'btn-load-stats',
+  downloadBtn: 'btn-download-local',
   deleteBtn: 'btn-delete-assets',
   localCacheLists: 'local-cache-lists',
   localImageList: 'local-image-list',
@@ -622,6 +623,7 @@ function updateDeleteButton() {
 function setActionButtonsState() {
   const loadBtn = ui.loadBtn;
   const deleteBtn = ui.deleteBtn;
+  const downloadBtn = ui.downloadBtn;
   const disabled = isBatchLoading || isBatchDeleting || isLocalDeleting;
   const noSelection = getActiveSelectedSet().size === 0;
   if (loadBtn) {
@@ -636,6 +638,14 @@ function setActionButtonsState() {
       deleteBtn.disabled = disabled || noSelection;
     } else {
       deleteBtn.disabled = disabled || noSelection;
+    }
+  }
+  if (downloadBtn) {
+    if (currentSection === 'online') {
+      downloadBtn.classList.add('hidden');
+    } else {
+      downloadBtn.classList.remove('hidden');
+      downloadBtn.disabled = disabled || noSelection;
     }
   }
 }
@@ -852,6 +862,13 @@ function renderLocalCacheList(type, items) {
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
         </button>
+        <button class="cache-icon-button" onclick="downloadLocalFile('${type}', '${item.name}')" title="下载">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
         <button class="cache-icon-button" onclick="deleteLocalFile('${type}', '${item.name}')" title="删除">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"></polyline>
@@ -978,6 +995,64 @@ function handleDeleteClick() {
   } else {
     deleteSelectedLocal(currentSection);
   }
+}
+
+function handleDownloadClick() {
+  ensureUI();
+  if (currentSection === 'online') return;
+  downloadSelectedLocal(currentSection);
+}
+
+function downloadSelectedLocal(type) {
+  const selected = selectedLocal[type];
+  const names = selected ? Array.from(selected) : [];
+  if (names.length === 0) {
+    showToast('未选择文件', 'info');
+    return;
+  }
+
+  if (names.length === 1) {
+    downloadLocalFile(type, names[0]);
+    return;
+  }
+
+  showToast(`正在打包 ${names.length} 个文件...`, 'info');
+
+  fetch('/api/v1/admin/cache/download', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildAuthHeaders(apiKey)
+    },
+    body: JSON.stringify({ type, names })
+  }).then(res => {
+    if (!res.ok) return res.json().catch(() => ({})).then(err => { throw new Error(err.detail || '下载失败'); });
+    return res.blob();
+  }).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    a.download = `${type}_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`已下载 ${names.length} 个文件`, 'success');
+  }).catch(e => {
+    showToast(e.message || '下载失败', 'error');
+  });
+}
+
+function downloadLocalFile(type, name) {
+  const prefix = type === 'image' ? '/v1/files/image/' : '/v1/files/video/';
+  const a = document.createElement('a');
+  a.href = prefix + encodeURIComponent(name);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function stopBatchLoad(options = {}) {

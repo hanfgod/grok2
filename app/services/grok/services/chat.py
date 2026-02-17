@@ -2,9 +2,9 @@
 Grok Chat 服务
 """
 
+import asyncio
 import orjson
-from typing import Dict, List, Any
-from dataclasses import dataclass
+from typing import Dict, List, Any, Optional
 
 from curl_cffi.requests import AsyncSession
 
@@ -27,15 +27,18 @@ from app.services.token import get_token_manager, EffortType
 
 CHAT_API = "https://grok.com/rest/app-chat/conversations/new"
 
+_CHAT_SEMAPHORE = None
+_CHAT_SEM_VALUE = 0
 
-@dataclass
-class ChatRequest:
-    """聊天请求数据"""
 
-    model: str
-    messages: List[Dict[str, Any]]
-    stream: bool = None
-    think: bool = None
+def _get_chat_semaphore() -> asyncio.Semaphore:
+    """获取或更新 Chat 并发信号量"""
+    global _CHAT_SEMAPHORE, _CHAT_SEM_VALUE
+    value = max(1, int(get_config("chat.concurrent", 50)))
+    if value != _CHAT_SEM_VALUE:
+        _CHAT_SEM_VALUE = value
+        _CHAT_SEMAPHORE = asyncio.Semaphore(value)
+    return _CHAT_SEMAPHORE
 
 
 class MessageExtractor:
@@ -161,6 +164,7 @@ class ChatRequestBuilder:
         mode: str = None,
         file_attachments: List[str] = None,
         image_attachments: List[str] = None,
+        model_config_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """构造请求体"""
         merged_attachments = []
@@ -185,7 +189,6 @@ class ChatRequestBuilder:
             "enableSideBySide": True,
             "sendFinalMetadata": True,
             "responseMetadata": {
-                "modelConfigOverride": {"modelMap": {}},
                 "requestModelDetails": {"modelId": model},
             },
             "disableMemory": get_config("chat.disable_memory"),
@@ -201,6 +204,9 @@ class ChatRequestBuilder:
 
         if mode:
             payload["modelMode"] = mode
+
+        if model_config_override:
+            payload["responseMetadata"]["modelConfigOverride"] = model_config_override
 
         return payload
 
@@ -220,19 +226,16 @@ class GrokChatService:
         stream: bool = None,
         file_attachments: List[str] = None,
         image_attachments: List[str] = None,
-        raw_payload: Dict[str, Any] = None,
+        model_config_override: Optional[Dict[str, Any]] = None,
     ):
         """发送聊天请求"""
         if stream is None:
             stream = get_config("chat.stream")
 
         headers = ChatRequestBuilder.build_headers(token)
-        payload = (
-            raw_payload
-            if raw_payload is not None
-            else ChatRequestBuilder.build_payload(
-                message, model, mode, file_attachments, image_attachments
-            )
+        payload = ChatRequestBuilder.build_payload(
+            message, model, mode, file_attachments, image_attachments,
+            model_config_override=model_config_override,
         )
         proxies = {"http": self.proxy, "https": self.proxy} if self.proxy else None
         timeout = get_config("network.timeout")
@@ -298,9 +301,10 @@ class GrokChatService:
         session = None
         response = None
         try:
-            session, response = await retry_on_status(
-                establish_connection, extract_status=extract_status
-            )
+            async with _get_chat_semaphore():
+                session, response = await retry_on_status(
+                    establish_connection, extract_status=extract_status
+                )
         except Exception as e:
             status_code = extract_status(e)
             if status_code:
@@ -324,21 +328,27 @@ class GrokChatService:
 
         return stream_response()
 
-    async def chat_openai(self, token: str, request: ChatRequest):
+    async def chat_openai(
+        self,
+        token: str,
+        model: str,
+        messages: List[Dict[str, Any]],
+        stream: bool = None,
+        reasoning_effort: str = None,
+        temperature: float = 0.8,
+        top_p: float = 0.95,
+    ):
         """OpenAI 兼容接口"""
-        model_info = ModelService.get(request.model)
+        model_info = ModelService.get(model)
         if not model_info:
-            raise ValidationException(f"Unknown model: {request.model}")
+            raise ValidationException(f"Unknown model: {model}")
 
         grok_model = model_info.grok_model
         mode = model_info.model_mode
-        is_video = model_info.is_video
 
         # 提取消息和附件
         try:
-            message, attachments = MessageExtractor.extract(
-                request.messages, is_video=is_video
-            )
+            message, attachments = MessageExtractor.extract(messages)
             logger.debug(
                 f"Extracted message length={len(message)}, attachments={len(attachments)}"
             )
@@ -360,8 +370,16 @@ class GrokChatService:
                 await upload_service.close()
 
         stream = (
-            request.stream if request.stream is not None else get_config("chat.stream")
+            stream if stream is not None else get_config("chat.stream")
         )
+
+        # Build model config override (temperature, topP, reasoningEffort)
+        model_config_override = {
+            "temperature": temperature,
+            "topP": top_p,
+        }
+        if reasoning_effort is not None:
+            model_config_override["reasoningEffort"] = reasoning_effort
 
         response = await self.chat(
             token,
@@ -371,9 +389,10 @@ class GrokChatService:
             stream,
             file_attachments=file_ids,
             image_attachments=[],
+            model_config_override=model_config_override,
         )
 
-        return response, stream, request.model
+        return response, stream, model
 
 
 class ChatService:
@@ -384,21 +403,22 @@ class ChatService:
         model: str,
         messages: List[Dict[str, Any]],
         stream: bool = None,
-        thinking: str = None,
+        reasoning_effort: str = None,
+        temperature: float = 0.8,
+        top_p: float = 0.95,
     ):
         """Chat Completions 入口"""
         # 获取 token
         token_mgr = await get_token_manager()
         await token_mgr.reload_if_stale()
 
-        # 解析参数（只需解析一次）
-        think = {"enabled": True, "disabled": False}.get(thinking)
-        is_stream = stream if stream is not None else get_config("chat.stream")
+        # 解析 thinking 显示控制
+        if reasoning_effort is None:
+            show_think = get_config("chat.thinking")
+        else:
+            show_think = reasoning_effort != "none"
 
-        # 构造请求（只需构造一次）
-        chat_request = ChatRequest(
-            model=model, messages=messages, stream=is_stream, think=think
-        )
+        is_stream = stream if stream is not None else get_config("chat.stream")
 
         # 跨 Token 重试循环
         tried_tokens = set()
@@ -438,12 +458,20 @@ class ChatService:
             try:
                 # 请求 Grok
                 service = GrokChatService()
-                response, _, model_name = await service.chat_openai(token, chat_request)
+                response, _, model_name = await service.chat_openai(
+                    token,
+                    model,
+                    messages,
+                    stream=is_stream,
+                    reasoning_effort=reasoning_effort,
+                    temperature=temperature,
+                    top_p=top_p,
+                )
 
                 # 处理响应
                 if is_stream:
                     logger.debug(f"Processing stream response: model={model}")
-                    processor = StreamProcessor(model_name, token, think)
+                    processor = StreamProcessor(model_name, token, show_think)
                     return wrap_stream_with_usage(
                         processor.process(response), token_mgr, token, model
                     )
@@ -493,7 +521,6 @@ class ChatService:
 
 __all__ = [
     "GrokChatService",
-    "ChatRequest",
     "ChatRequestBuilder",
     "MessageExtractor",
     "ChatService",

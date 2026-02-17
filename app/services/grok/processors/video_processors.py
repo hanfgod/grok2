@@ -3,6 +3,7 @@
 """
 
 import asyncio
+import re
 import uuid
 from typing import Any, AsyncGenerator, AsyncIterable, Optional
 
@@ -12,6 +13,7 @@ from curl_cffi.requests.errors import RequestsError
 from app.core.config import get_config
 from app.core.logger import logger
 from app.core.exceptions import UpstreamException
+from app.services.grok.utils.upscale import upscale_video
 from .base import (
     BaseProcessor,
     StreamIdleTimeoutError,
@@ -21,20 +23,51 @@ from .base import (
 )
 
 
+def _extract_video_id(video_url: str) -> str:
+    """Extract video UUID from a Grok video asset URL."""
+    if not video_url:
+        return ""
+    match = re.search(r"/generated/([0-9a-fA-F-]{32,36})/", video_url)
+    if match:
+        return match.group(1)
+    match = re.search(r"/([0-9a-fA-F-]{32,36})/generated_video", video_url)
+    if match:
+        return match.group(1)
+    return ""
+
+
 class VideoStreamProcessor(BaseProcessor):
     """视频流式响应处理器"""
 
-    def __init__(self, model: str, token: str = "", think: bool = None):
+    def __init__(
+        self,
+        model: str,
+        token: str = "",
+        think: bool = None,
+        upscale_on_finish: bool = False,
+    ):
         super().__init__(model, token)
         self.response_id: Optional[str] = None
         self.think_opened: bool = False
         self.role_sent: bool = False
         self.video_format = str(get_config("app.video_format")).lower()
+        self.upscale_on_finish = bool(upscale_on_finish)
 
         if think is None:
             self.show_think = get_config("chat.thinking")
         else:
             self.show_think = think
+
+    async def _upscale_video_url(self, video_url: str) -> str:
+        """If upscale is enabled, request HD version and return upgraded URL."""
+        if not video_url or not self.upscale_on_finish:
+            return video_url
+        video_id = _extract_video_id(video_url)
+        if not video_id:
+            logger.warning("Video upscale skipped: unable to extract video id")
+            return video_url
+        hd_url = await upscale_video(self.token, video_id)
+        return hd_url or video_url
 
     def _sse(self, content: str = "", role: str = None, finish: str = None) -> str:
         """构建 SSE 响应"""
@@ -111,6 +144,10 @@ class VideoStreamProcessor(BaseProcessor):
                             self.think_opened = False
 
                         if video_url:
+                            if self.upscale_on_finish:
+                                yield self._sse("正在对视频进行超分辨率\n")
+                                video_url = await self._upscale_video_url(video_url)
+
                             final_video_url = await self.process_url(video_url, "video")
                             final_thumbnail_url = ""
                             if thumbnail_url:
@@ -177,9 +214,26 @@ class VideoStreamProcessor(BaseProcessor):
 class VideoCollectProcessor(BaseProcessor):
     """视频非流式响应处理器"""
 
-    def __init__(self, model: str, token: str = ""):
+    def __init__(
+        self,
+        model: str,
+        token: str = "",
+        upscale_on_finish: bool = False,
+    ):
         super().__init__(model, token)
         self.video_format = str(get_config("app.video_format")).lower()
+        self.upscale_on_finish = bool(upscale_on_finish)
+
+    async def _upscale_video_url(self, video_url: str) -> str:
+        """If upscale is enabled, request HD version and return upgraded URL."""
+        if not video_url or not self.upscale_on_finish:
+            return video_url
+        video_id = _extract_video_id(video_url)
+        if not video_id:
+            logger.warning("Video upscale skipped: unable to extract video id")
+            return video_url
+        hd_url = await upscale_video(self.token, video_id)
+        return hd_url or video_url
 
     def _build_video_html(self, video_url: str, thumbnail_url: str = "") -> str:
         poster_attr = f' poster="{thumbnail_url}"' if thumbnail_url else ""
@@ -212,6 +266,9 @@ class VideoCollectProcessor(BaseProcessor):
                         thumbnail_url = video_resp.get("thumbnailImageUrl", "")
 
                         if video_url:
+                            if self.upscale_on_finish:
+                                video_url = await self._upscale_video_url(video_url)
+
                             final_video_url = await self.process_url(video_url, "video")
                             final_thumbnail_url = ""
                             if thumbnail_url:

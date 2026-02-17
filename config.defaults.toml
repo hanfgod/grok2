@@ -50,6 +50,8 @@ thinking = true
 dynamic_statsig = true
 # 过滤的特殊标签列表
 filter_tags = ["xaiartifact","xai:tool_usage_card","grok:render"]
+# Chat 并发请求上限
+concurrent = 50
 
 
 # ==================== 重试策略 ====================

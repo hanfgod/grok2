@@ -202,7 +202,7 @@ class BaseService:
         """获取远程资源并转 Base64"""
         try:
             async with AsyncSession() as session:
-                response = await session.get(url, timeout=10)
+                response = await session.get(url, timeout=10, stream=True)
                 if response.status_code >= 400:
                     raise UpstreamException(
                         message=f"Failed to fetch: {response.status_code}",
@@ -687,17 +687,25 @@ class DownloadService(BaseService):
             try:
                 file_path.unlink()
                 deleted = True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to delete {file_path}: {e}")
+        else:
+            logger.warning(f"File not found for deletion: {file_path}")
 
         # Video: also delete associated thumbnail in image cache
         # Video: users-xxx-generated-yyy-generated_video.mp4
+        #    or: users-xxx-generated-yyy-generated_video_hd.mp4 (upscaled)
         # Thumb: users-xxx-generated-yyy-preview_image.jpg
-        # Common prefix: everything before the last "-generated_video" / "-preview_image"
+        # Common prefix: everything before the last "-generated_video*" / "-preview_image"
         if media_type == "video" and name:
-            stem = file_path.stem  # e.g. "users-xxx-generated_video"
+            stem = file_path.stem  # e.g. "users-xxx-generated_video_hd"
             # Strip trailing suffixes to get common prefix
-            for suffix in ("-generated_video", "-generated-video"):
+            for suffix in (
+                "-generated_video_hd",
+                "-generated-video-hd",
+                "-generated_video",
+                "-generated-video",
+            ):
                 if stem.endswith(suffix):
                     stem = stem[: -len(suffix)]
                     break
@@ -706,8 +714,9 @@ class DownloadService(BaseService):
                     if img_file.is_file():
                         try:
                             img_file.unlink()
-                        except Exception:
-                            pass
+                            logger.debug(f"Cleaned up thumbnail: {img_file.name}")
+                        except Exception as e:
+                            logger.error(f"Failed to delete thumbnail {img_file}: {e}")
 
         return {"deleted": deleted}
 

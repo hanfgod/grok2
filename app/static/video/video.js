@@ -429,12 +429,12 @@
     }
 
     // Fire-and-forget: backend auto-cleans associated thumbnail
+    // Public mode returns '' (valid), only null means auth truly failed
     ensureApiKey().then(apiKey => {
       if (apiKey === null) {
         warn('删除缓存失败：登录已失效，请重新登录');
         return;
       }
-      if (!apiKey) return;
       fetch('/api/v1/admin/cache/item/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(apiKey) },

@@ -1637,7 +1637,7 @@ async def load_online_cache_api_async(data: dict):
     }
 
 
-@router.post("/api/v1/admin/cache/clear", dependencies=[Depends(verify_api_key)])
+@router.post("/api/v1/admin/cache/clear", dependencies=[Depends(verify_api_key_if_private)])
 async def clear_local_cache_api(data: dict):
     """清理本地缓存"""
     from app.services.grok.services.assets import DownloadService
@@ -1672,7 +1672,7 @@ async def list_local_cache_api(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/v1/admin/cache/item/delete", dependencies=[Depends(verify_api_key)])
+@router.post("/api/v1/admin/cache/item/delete", dependencies=[Depends(verify_api_key_if_private)])
 async def delete_local_cache_item_api(data: dict):
     """删除单个本地缓存文件"""
     from app.services.grok.services.assets import DownloadService
@@ -1684,9 +1684,79 @@ async def delete_local_cache_item_api(data: dict):
     try:
         dl_service = DownloadService()
         result = dl_service.delete_file(cache_type, name)
+        if not result.get("deleted"):
+            raise HTTPException(status_code=500, detail="File deletion failed")
         return {"status": "success", "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/v1/admin/cache/download", dependencies=[Depends(verify_api_key)])
+async def download_cache_files_api(data: dict):
+    """Batch download local cache files as a ZIP archive (ZIP_STORED, no compression)."""
+    import zipfile
+    import tempfile
+    from datetime import datetime
+    from fastapi.responses import FileResponse
+    from starlette.background import BackgroundTask
+    from app.services.grok.services.assets import DownloadService
+
+    cache_type = data.get("type", "image")
+    names = data.get("names", [])
+
+    if not names or not isinstance(names, list):
+        raise HTTPException(status_code=400, detail="No files specified")
+
+    dl_service = DownloadService()
+    base_dir = dl_service.image_dir if cache_type == "image" else dl_service.video_dir
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    try:
+        packed = 0
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as zf:
+            for name in names:
+                if not name or ".." in name or "/" in name or "\\" in name or ":" in name:
+                    continue
+                file_path = base_dir / name
+                try:
+                    if file_path.resolve().parent != base_dir.resolve():
+                        continue
+                except (ValueError, OSError):
+                    continue
+                if file_path.exists() and file_path.is_file():
+                    zf.write(file_path, name)
+                    packed += 1
+        tmp.close()
+
+        if packed == 0:
+            os.unlink(tmp.name)
+            raise HTTPException(status_code=404, detail="No valid files found")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        zip_name = f"{cache_type}_{timestamp}.zip"
+
+        async def cleanup():
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+
+        return FileResponse(
+            tmp.name,
+            media_type="application/zip",
+            filename=zip_name,
+            background=BackgroundTask(cleanup),
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Failed to create ZIP archive")
 
 
 @router.post("/api/v1/admin/cache/online/clear", dependencies=[Depends(verify_api_key)])

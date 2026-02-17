@@ -21,6 +21,7 @@ from app.services.grok.protocols.grpc_web import (
 from app.services.grok.utils.headers import build_sso_cookie
 
 NSFW_API = "https://grok.com/auth_mgmt.AuthManagement/UpdateUserFeatureControls"
+ACCEPT_TOS_API = "https://accounts.x.ai/auth_mgmt.AuthManagement/SetTosAcceptedVersion"
 BIRTH_DATE_API = "https://grok.com/rest/auth/set-birth-date"
 
 
@@ -87,6 +88,24 @@ class NSFWService:
             "cookie": cookie,
         }
 
+    def _build_tos_headers(self, token: str) -> dict:
+        """构造 Accept ToS gRPC-Web 请求头"""
+        cookie = build_sso_cookie(token, include_rw=True)
+        user_agent = get_config("security.user_agent")
+        return {
+            "accept": "*/*",
+            "content-type": "application/grpc-web+proto",
+            "origin": "https://accounts.x.ai",
+            "referer": "https://accounts.x.ai/accept-tos",
+            "user-agent": user_agent,
+            "x-grpc-web": "1",
+            "x-user-agent": "connect-es/2.1.1",
+            "cache-control": "no-cache",
+            "pragma": "no-cache",
+            "sec-fetch-dest": "empty",
+            "cookie": cookie,
+        }
+
     @staticmethod
     def _build_payload() -> bytes:
         """构造请求 payload"""
@@ -98,6 +117,43 @@ class NSFWService:
         inner = b"\x0a" + bytes([len(name)]) + name
         protobuf = b"\x0a\x02\x10\x01\x12" + bytes([len(inner)]) + inner
         return encode_grpc_web_payload(protobuf)
+
+    async def _accept_tos(
+        self, session: AsyncSession, token: str
+    ) -> tuple[bool, int, Optional[str]]:
+        """Accept Terms of Service via gRPC-Web (accounts.x.ai)"""
+        headers = self._build_tos_headers(token)
+        # protobuf: field 2, varint 1 → SetTosAcceptedVersion(version=1)
+        payload = encode_grpc_web_payload(b"\x10\x01")
+
+        try:
+            response = await session.post(
+                ACCEPT_TOS_API,
+                data=payload,
+                headers=headers,
+                timeout=self.timeout,
+                proxies=self._build_proxies(),
+            )
+            if response.status_code != 200:
+                return False, response.status_code, f"HTTP {response.status_code}"
+
+            _, trailers = parse_grpc_web_response(
+                response.content,
+                content_type=response.headers.get("content-type"),
+                headers=dict(response.headers),
+            )
+            grpc_status = get_grpc_status(trailers)
+
+            if grpc_status.code not in (-1, 0):
+                return (
+                    False,
+                    grpc_status.http_equiv,
+                    f"gRPC {grpc_status.code}: {grpc_status.message}",
+                )
+
+            return True, response.status_code, None
+        except Exception as e:
+            return False, 0, str(e)[:100]
 
     async def _set_birth_date(
         self, session: AsyncSession, token: str
@@ -129,7 +185,16 @@ class NSFWService:
         try:
             browser = get_config("security.browser")
             async with AsyncSession(impersonate=browser) as session:
-                # 先设置出生日期
+                # 1. 接受服务条款 (ToS)
+                ok, tos_status, tos_err = await self._accept_tos(session, token)
+                if not ok:
+                    return NSFWResult(
+                        success=False,
+                        http_status=tos_status,
+                        error=f"Accept ToS failed: {tos_err}",
+                    )
+
+                # 2. 设置出生日期
                 ok, birth_status, birth_err = await self._set_birth_date(session, token)
                 if not ok:
                     return NSFWResult(
@@ -138,7 +203,7 @@ class NSFWService:
                         error=f"Set birth date failed: {birth_err}",
                     )
 
-                # 开启 NSFW
+                # 3. 开启 NSFW
                 response = await session.post(
                     NSFW_API,
                     data=payload,

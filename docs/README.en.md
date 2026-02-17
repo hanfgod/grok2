@@ -72,6 +72,14 @@ The **Video Generation** page (`/admin/video`) under the "Features" menu provide
 
 - New **"Refresh All"** button: one-click refresh of all Token statuses without manual selection
 
+---
+
+### Cache Management Enhancement
+
+- New **Batch Download**: select multiple local image/video files and click the "Download" button to get a single ZIP archive (`ZIP_STORED`, no compression overhead); selecting only 1 file downloads it directly without zipping
+- New **Single File Download**: a download icon has been added to each file row for quick single-file download
+- New **Inline Media Preview**: opening a file link in the browser now plays videos or displays images directly instead of triggering a download
+
 <br>
 
 ## Deployment
@@ -142,7 +150,7 @@ If the legacy default `grok2api` is still used, login is rejected (set `ALLOW_IN
 - **Status Filtering**: Filter by status (active/rate-limited/invalid) or NSFW status
 - **Batch Operations**: Batch refresh, export, delete, enable NSFW
 - **Config Management**: Modify system configuration online
-- **Cache Management**: View and clean media cache
+- **Cache Management**: View, clean, and download media cache (supports batch download of images/videos)
 - **Imagine Generation/Editing**: WebSocket/SSE real-time image generation + image editing mode (fork enhancement)
 - **Video Generation**: Visual video generation with image-to-video support (new in fork)
 - **Voice Live**: LiveKit voice session

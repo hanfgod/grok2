@@ -18,6 +18,7 @@ from app.core.exceptions import (
 )
 from app.services.grok.models.model import ModelService
 from app.services.token import get_token_manager, EffortType
+from app.services.token.manager import BASIC_POOL_NAME
 from app.services.grok.processors import VideoStreamProcessor, VideoCollectProcessor
 from app.services.grok.utils.headers import apply_statsig, build_sso_cookie
 from app.services.grok.utils.stream import wrap_stream_with_usage
@@ -326,6 +327,10 @@ class VideoService:
         if token.startswith("sso="):
             token = token[4:]
 
+        # basic 池 + 720p → 需要 upscale（basic 不原生支持 720p）
+        pool_name = token_mgr.get_pool_name_for_token(token)
+        should_upscale = resolution == "720p" and pool_name == BASIC_POOL_NAME
+
         think = {"enabled": True, "disabled": False}.get(thinking)
         is_stream = stream if stream is not None else get_config("chat.stream")
 
@@ -365,12 +370,16 @@ class VideoService:
 
         # 处理响应
         if is_stream:
-            processor = VideoStreamProcessor(model, token, think)
+            processor = VideoStreamProcessor(
+                model, token, think, upscale_on_finish=should_upscale
+            )
             return wrap_stream_with_usage(
                 processor.process(response), token_mgr, token, model
             )
 
-        result = await VideoCollectProcessor(model, token).process(response)
+        result = await VideoCollectProcessor(
+            model, token, upscale_on_finish=should_upscale
+        ).process(response)
         try:
             model_info = ModelService.get(model)
             effort = (

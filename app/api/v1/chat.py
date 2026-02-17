@@ -110,7 +110,11 @@ class ChatCompletionRequest(BaseModel):
     model: str = Field(..., description="模型名称")
     messages: List[MessageItem] = Field(..., description="消息数组")
     stream: Optional[bool] = Field(None, description="是否流式输出")
-    thinking: Optional[str] = Field(None, description="思考模式: enabled/disabled/None")
+    reasoning_effort: Optional[str] = Field(
+        None, description="推理强度: none/minimal/low/medium/high/xhigh"
+    )
+    temperature: Optional[float] = Field(0.8, description="采样温度: 0-2")
+    top_p: Optional[float] = Field(0.95, description="nucleus 采样: 0-1")
 
     # 视频生成配置
     video_config: Optional[VideoConfig] = Field(None, description="视频生成参数")
@@ -272,7 +276,7 @@ async def chat_completions(request: ChatCompletionRequest):
             model=request.model,
             messages=[msg.model_dump() for msg in request.messages],
             stream=resolved_stream,
-            thinking=request.thinking,
+            thinking=request.reasoning_effort,
             aspect_ratio=v_conf.aspect_ratio,
             video_length=v_conf.video_length,
             resolution=v_conf.resolution_name,
@@ -283,7 +287,9 @@ async def chat_completions(request: ChatCompletionRequest):
             model=request.model,
             messages=[msg.model_dump() for msg in request.messages],
             stream=resolved_stream,
-            thinking=request.thinking,
+            reasoning_effort=request.reasoning_effort,
+            temperature=request.temperature,
+            top_p=request.top_p,
         )
 
     if isinstance(result, dict):

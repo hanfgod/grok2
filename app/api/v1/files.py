@@ -17,6 +17,12 @@ BASE_DIR = DATA_DIR / "tmp"
 IMAGE_DIR = BASE_DIR / "image"
 VIDEO_DIR = BASE_DIR / "video"
 
+# 浏览器直接预览，不触发下载
+_INLINE_HEADERS = {
+    "Content-Disposition": "inline",
+    "Cache-Control": "public, max-age=31536000, immutable",
+}
+
 
 def _resolve_media_path(base_dir: Path, filename: str) -> Path:
     """Resolve a safe media path under the target directory."""
@@ -55,11 +61,10 @@ async def get_image(filename: str):
             elif file_path.suffix.lower() == ".webp":
                 content_type = "image/webp"
 
-            # 增加缓存头，支持高并发场景下的浏览器/CDN缓存
             return FileResponse(
                 file_path,
                 media_type=content_type,
-                headers={"Cache-Control": "public, max-age=31536000, immutable"},
+                headers=_INLINE_HEADERS,
             )
 
     logger.warning(f"Image not found: {filename}")
@@ -78,7 +83,7 @@ async def get_video(filename: str):
             return FileResponse(
                 file_path,
                 media_type="video/mp4",
-                headers={"Cache-Control": "public, max-age=31536000, immutable"},
+                headers=_INLINE_HEADERS,
             )
 
     logger.warning(f"Video not found: {filename}")

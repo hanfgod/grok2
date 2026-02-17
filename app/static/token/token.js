@@ -793,15 +793,16 @@ async function refreshAll() {
     showToast('当前有任务进行中', 'info');
     return;
   }
-  if (flatTokens.length === 0) {
-    showToast('没有可刷新的 Token', 'error');
+  const filtered = getFilteredTokens();
+  if (filtered.length === 0) {
+    showToast('没有可选择的 Token', 'error');
     return;
   }
-  // Select all tokens then batch refresh
-  setSelectedForTokens(flatTokens, true);
-  renderTable();
-  updateSelectedCount();
-  startBatchRefresh();
+
+  setSelectedForTokens(filtered, true);
+  syncVisibleSelectionUI(true);
+  updateSelectionState();
+  showToast(`已选择 ${filtered.length} 个 Token`, 'success');
 }
 
 function updateBatchProgress() {

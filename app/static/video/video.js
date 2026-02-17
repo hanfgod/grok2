@@ -392,7 +392,7 @@
   function clearHistory() {
     // Delete all cached source files before clearing
     const history = loadHistory();
-    history.forEach(item => _deleteCachedFile(item));
+    history.forEach(item => _deleteCachedFile(item, { notifyOnFail: false }));
     try {
       localStorage.removeItem(HISTORY_KEY);
     } catch (e) {
@@ -407,40 +407,67 @@
     if (index >= 0 && index < history.length) {
       const item = history[index];
       // Try to delete the cached source file on server
-      _deleteCachedFile(item);
+      _deleteCachedFile(item, { notifyOnFail: true });
       history.splice(index, 1);
       saveHistory(history);
       renderHistory();
     }
   }
 
-  function _deleteCachedFile(item) {
-    if (!item || !item.content) return;
-    // Extract video file path from content (URL or HTML)
-    let url = null;
-    if (item.type === 'url') {
-      url = item.content.trim();
-    } else {
-      // Try to extract URL from HTML content
-      const match = item.content.match(/https?:\/\/[^\s"'<>]+/i);
-      if (match) url = match[0];
-    }
-    if (!url) return;
+  function _deleteCachedFile(item, options = {}) {
+    const notifyOnFail = options.notifyOnFail !== false;
+    const warn = (msg) => {
+      if (notifyOnFail) toast(msg, 'warning');
+    };
 
-    // Extract filename from /v1/files/video/xxx pattern
-    const fileMatch = url.match(/\/v1\/files\/video\/(.+?)(?:\?|$)/);
-    if (!fileMatch) return;
-    const filename = decodeURIComponent(fileMatch[1]);
+    if (!item || !item.content) return;
+    const content = String(item.content).trim();
+    const fileMatch = content.match(/(?:https?:\/\/[^\s"'<>]+)?\/v1\/files\/video\/(.+?)(?=[?#][^\s"'<>]*|[\s"'<>]|$)/i);
+    if (!fileMatch) {
+      warn('删除缓存失败：未识别到视频文件路径');
+      return;
+    }
+    const filename = fileMatch[1];
 
     // Fire-and-forget: delete the cached file
     ensureApiKey().then(apiKey => {
-      if (!apiKey) return;
+      if (apiKey === null) {
+        warn('删除缓存失败：登录已失效，请重新登录');
+        return;
+      }
+      if (!apiKey) {
+        // Public page mode: skip protected admin delete API
+        return;
+      }
       fetch('/api/v1/admin/cache/item/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(apiKey) },
         body: JSON.stringify({ type: 'video', name: filename })
-      }).catch(() => {});
-    }).catch(() => {});
+      }).then(async (res) => {
+        if (!res.ok) {
+          let detail = '';
+          try {
+            const errData = await res.json();
+            detail = errData && errData.detail ? String(errData.detail) : '';
+          } catch (_) {}
+          warn(`删除缓存失败：${detail || `HTTP ${res.status}`}`);
+          return;
+        }
+
+        try {
+          const data = await res.json();
+          if (!data || !data.result || data.result.deleted !== true) {
+            warn('删除缓存失败：缓存文件不存在或已被清理');
+          }
+        } catch (_) {
+          warn('删除缓存失败：响应解析异常');
+        }
+      }).catch(() => {
+        warn('删除缓存失败：请求异常');
+      });
+    }).catch(() => {
+      warn('删除缓存失败：鉴权检查异常');
+    });
   }
 
   function renderHistory() {
@@ -981,7 +1008,7 @@
   // Clear all
   if (wfClearBtn) wfClearBtn.addEventListener('click', () => {
     if (waterfallRunning) stopWaterfall();
-    wfItems.forEach(item => _deleteCachedFile(item));
+    wfItems.forEach(item => _deleteCachedFile(item, { notifyOnFail: false }));
     wfItems = [];
     wfSaveItems();
     wfRender();
@@ -1003,7 +1030,7 @@
     if (wfSelected.size === 0) return;
     const count = wfSelected.size;
     const toDelete = wfItems.filter(item => wfSelected.has(item.id));
-    toDelete.forEach(item => _deleteCachedFile(item));
+    toDelete.forEach(item => _deleteCachedFile(item, { notifyOnFail: false }));
     wfItems = wfItems.filter(item => !wfSelected.has(item.id));
     wfSaveItems(); wfExitSelectionMode(); wfRender();
     toast('已删除 ' + count + ' 个视频', 'success');

@@ -652,7 +652,7 @@ async def edit_image(
         "returnImageBytes": False,
         "returnRawGrokInXaiRequest": False,
         "enableImageStreaming": True,
-        "imageGenerationCount": 2,
+        "imageGenerationCount": min(edit_request.n, 4),
         "forceConcise": False,
         "toolOverrides": {"imageGen": True},
         "enableSideBySide": True,

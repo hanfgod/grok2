@@ -163,17 +163,35 @@ class BaseService:
                 "Referer": referer,
                 "User-Agent": self.config.user_agent,
             }
+            # download is read-only, no need for sso-rw
+            headers["Cookie"] = build_sso_cookie(token)
         else:
             headers = {
                 "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate, br, zstd",
+                "Accept-Language": "zh-CN,zh;q=0.9",
+                "Baggage": "sentry-environment=production,sentry-release=d6add6fb0460641fd482d767a335ef72b9b6abb8,sentry-public_key=b311e0f2690c81f25e2c4cf6d4f7ce1c",
+                "Cache-Control": "no-cache",
                 "Content-Type": "application/json",
                 "Origin": "https://grok.com",
+                "Pragma": "no-cache",
+                "Priority": "u=1, i",
                 "Referer": referer,
+                "Sec-Ch-Ua": '"Google Chrome";v="136", "Chromium";v="136", "Not(A:Brand";v="24"',
+                "Sec-Ch-Ua-Arch": "arm",
+                "Sec-Ch-Ua-Bitness": "64",
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Model": "",
+                "Sec-Ch-Ua-Platform": '"macOS"',
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
                 "User-Agent": self.config.user_agent,
             }
             apply_statsig(headers)
+            # upload/delete/list are write ops, need sso-rw cookie
+            headers["Cookie"] = build_sso_cookie(token, include_rw=True)
 
-        headers["Cookie"] = build_sso_cookie(token)
         return headers
 
     async def _get_session(self) -> AsyncSession:
@@ -317,7 +335,12 @@ class UploadService(BaseService):
 
             # 认证失败
             if response.status_code in (401, 403):
-                logger.warning(f"Upload auth failed: {response.status_code}")
+                resp_body = ""
+                try:
+                    resp_body = response.text[:500]
+                except Exception:
+                    pass
+                logger.warning(f"Upload auth failed: {response.status_code}, body={resp_body}")
                 try:
                     await TokenService.record_fail(
                         token, response.status_code, "upload_auth_failed"

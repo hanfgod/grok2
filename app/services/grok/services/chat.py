@@ -227,16 +227,20 @@ class GrokChatService:
         file_attachments: List[str] = None,
         image_attachments: List[str] = None,
         model_config_override: Optional[Dict[str, Any]] = None,
+        raw_payload: Optional[Dict[str, Any]] = None,
     ):
         """发送聊天请求"""
         if stream is None:
             stream = get_config("chat.stream")
 
         headers = ChatRequestBuilder.build_headers(token)
-        payload = ChatRequestBuilder.build_payload(
-            message, model, mode, file_attachments, image_attachments,
-            model_config_override=model_config_override,
-        )
+        if raw_payload is not None:
+            payload = raw_payload
+        else:
+            payload = ChatRequestBuilder.build_payload(
+                message, model, mode, file_attachments, image_attachments,
+                model_config_override=model_config_override,
+            )
         proxies = {"http": self.proxy, "https": self.proxy} if self.proxy else None
         timeout = get_config("network.timeout")
 
